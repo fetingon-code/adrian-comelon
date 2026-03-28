@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego del Comelón - Adrián</title>
+    <style>
+        * { touch-action: none; user-select: none; } /* Bloquea el zoom y el scroll */
+        body { 
+            margin: 0; padding: 0; font-family: sans-serif; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('fondo.jpg');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            overflow: hidden;
+        }
+        #btn-musica {
+            position: fixed; top: 15px; right: 15px; padding: 10px 15px;
+            background: white; border: 3px solid #2b5a9e; border-radius: 20px;
+            z-index: 1000; font-weight: bold;
+        }
+        #contenedor-juego { display: flex; flex-direction: column; align-items: center; z-index: 10; }
+        #marcador { font-size: 28px; font-weight: bold; margin-bottom: 15px; background: white; padding: 10px 30px; border-radius: 30px; border: 4px solid #2b5a9e; color: #2b5a9e; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        #mensaje { background: rgba(255, 255, 255, 0.9); padding: 8px 20px; border-radius: 12px; margin-bottom: 15px; font-size: 20px; font-weight: bold; }
+        #caja-personaje { width: 250px; height: 300px; border: 8px solid #2b5a9e; background: white; border-radius: 25px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        #personaje-img { width: 100%; height: 100%; object-fit: cover; }
+        #contenedor-objetos { display: flex; gap: 40px; margin-top: 40px; position: relative; width: 100%; justify-content: center; height: 120px; }
+        .circulo { 
+            width: 110px; height: 110px; border: 5px solid #2b5a9e; border-radius: 50%; 
+            background: white; display: flex; align-items: center; justify-content: center; 
+            position: absolute; touch-action: none; cursor: grab;
+            transition: transform 0.1s ease-out; /* Suaviza el movimiento */
+        }
+        .circulo img { width: 80%; height: 80%; object-fit: contain; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <button id="btn-musica" onclick="controlarMusica()">🎵 Música: OFF</button>
+    <audio id="audioFondo" src="musica.mp3" loop></audio>
+
+    <div id="contenedor-juego">
+        <div id="marcador">Puntos: <span id="puntos">0</span></div>
+        <h2 id="mensaje">Adrián tiene hambre</h2>
+        <div id="caja-personaje" id="target">
+            <img src="normal.jpg" id="personaje-img">
+        </div>
+        <div id="contenedor-objetos">
+            <div class="circulo" id="c0" style="left: 20%"><img src="" id="img0"></div>
+            <div class="circulo" id="c1" style="left: 60%"><img src="" id="img1"></div>
+        </div>
+    </div>
+
+    <script>
+        let pts = 0;
+        const pImg = document.getElementById('personaje-img');
+        const ptsTxt = document.getElementById('puntos');
+        const msg = document.getElementById('mensaje');
+        const caja = document.getElementById('caja-personaje');
+        
+        const musica = document.getElementById('audioFondo');
+        musica.volume = 0.15;
+        const sonidoRico = new Audio('rico.mp3');
+        const sonidoAsco = new Audio('asco.mp3');
+
+        function controlarMusica() {
+            if (musica.paused) { musica.play(); document.getElementById('btn-musica').innerText = "🎵 Música: ON"; }
+            else { musica.pause(); document.getElementById('btn-musica').innerText = "🎵 Música: OFF"; }
+        }
+
+        let opciones = [];
+        function mezclar() {
+            const c = Math.random() > 0.5 ? 'comida1.jpg' : 'comida2.jpg';
+            const v = Math.random() > 0.5 ? 'veneno1.jpg' : 'veneno2.jpg';
+            opciones = [{s:c, t:'bueno'}, {s:v, t:'malo'}].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('img0').src = opciones[0].s;
+            document.getElementById('img1').src = opciones[1].s;
+            
+            const c0 = document.getElementById('c0');
+            const c1 = document.getElementById('c1');
+            
+            c0.style.visibility = 'visible';
+            c1.style.visibility = 'visible';
+            c0.style.transform = "translate(0,0)";
+            c1.style.transform = "translate(0,0)";
+        }
+
+        function setupTouch(element, index) {
+            let startX, startY, moveX, moveY;
+
+            element.addEventListener('touchstart', (e) => {
+                const touch = e.touches[0];
+                const rect = element.getBoundingClientRect();
+                startX = touch.clientX - 0; // Guardamos posición inicial
+                startY = touch.clientY - 0;
+                element.style.zIndex = "1000";
+            }, {passive: false});
+
+            element.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                moveX = touch.clientX - startX;
+                moveY = touch.clientY - startY;
+                element.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            }, {passive: false});
+
+            element.addEventListener('touchend', (e) => {
+                const touch = e.changedTouches[0];
+                const targetRect = caja.getBoundingClientRect();
+                
+                // Verificamos si soltamos el dedo dentro del área de la cara
+                if (touch.clientX > targetRect.left && touch.clientX < targetRect.right &&
+                    touch.clientY > targetRect.top && touch.clientY < targetRect.bottom) {
+                    procesarEleccion(opciones[index]);
+                } else {
+                    element.style.transform = "translate(0,0)";
+                }
+                element.style.zIndex = "100";
+            });
+        }
+
+        function procesarEleccion(sel) {
+            document.getElementById('c0').style.visibility = 'hidden';
+            document.getElementById('c1').style.visibility = 'hidden';
+            
+            if (sel.t === 'bueno') {
+                pts += 10; pImg.src = 'comiendo.jpg'; msg.innerText = "¡QUÉ RICO! 😋";
+                sonidoRico.play().catch(()=>{});
+            } else {
+                pts -= 20; pImg.src = 'enfermo.jpg'; msg.innerText = "¡PUAJ! 🤢";
+                sonidoAsco.play().catch(()=>{});
+            }
+            ptsTxt.innerText = pts;
+            setTimeout(() => {
+                pImg.src = 'normal.jpg';
+                msg.innerText = "Adrián tiene hambre";
+                mezclar();
+            }, 1500);
+        }
+
+        setupTouch(document.getElementById('c0'), 0);
+        setupTouch(document.getElementById('c1'), 1);
+        mezclar();
+    </script>
+</body>
+</html>
