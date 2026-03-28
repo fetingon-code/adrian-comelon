@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Juego del Comelón - Adrián</title>
+    <style>
+        /* CONFIGURACIÓN DEL FONDO (EL PISO DE LA PÁGINA) */
+        body { 
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            
+            /* Filtro opaco (70% blanco) mezclado con la imagen de fondo */
+            background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), 
+                        url('fondo.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-color: #d1e3f0; /* Color de respaldo */
+            overflow: hidden;
+        }
+
+        /* BOTÓN DE MÚSICA EN LA ESQUINA */
+        #btn-musica {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: white;
+            border: 3px solid #2b5a9e;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: 0.3s;
+        }
+        #btn-musica:hover { transform: scale(1.05); background: #f0f8ff; }
+
+        /* CONTENEDOR DEL JUEGO (SIEMPRE AL FRENTE) */
+        #contenedor-juego {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        #marcador { 
+            font-size: 32px; 
+            font-weight: bold; 
+            margin-bottom: 20px; 
+            background: white; 
+            padding: 10px 40px; 
+            border-radius: 50px; 
+            border: 5px solid #2b5a9e; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            color: #2b5a9e;
+        }
+        
+        #mensaje {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px 20px;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            color: #333;
+            min-height: 40px;
+        }
+
+        #caja-personaje {
+            width: 280px;
+            height: 320px;
+            border: 8px solid #2b5a9e;
+            background: white; 
+            border-radius: 25px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        #personaje-img { width: 100%; height: 100%; object-fit: cover; }
+
+        #contenedor-objetos {
+            display: flex;
+            gap: 50px;
+            margin-top: 40px;
+        }
+
+        .circulo {
+            width: 120px;
+            height: 120px;
+            border: 6px solid #2b5a9e;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+            transition: 0.2s;
+        }
+        .circulo:active { cursor: grabbing; transform: scale(1.1); }
+        .circulo img { width: 85%; height: 85%; object-fit: contain; }
+    </style>
+</head>
+<body>
+
+    <button id="btn-musica" onclick="controlarMusica()">🎵 Música: OFF</button>
+
+    <audio id="audioFondo" src="musica.mp3" loop></audio>
+
+    <div id="contenedor-juego">
+        <div id="marcador">Puntos: <span id="puntos">0</span></div>
+        <h2 id="mensaje">Adrián tiene hambre</h2>
+
+        <div id="caja-personaje" ondragover="event.preventDefault()" ondrop="soltar(event)">
+            <img src="normal.jpg" id="personaje-img">
+        </div>
+
+        <div id="contenedor-objetos">
+            <div class="circulo" draggable="true" ondragstart="arrastrar(event, 0)" id="c0">
+                <img src="" id="img0">
+            </div>
+            <div class="circulo" draggable="true" ondragstart="arrastrar(event, 1)" id="c1">
+                <img src="" id="img1">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pts = 0;
+        const pImg = document.getElementById('personaje-img');
+        const ptsTxt = document.getElementById('puntos');
+        const msg = document.getElementById('mensaje');
+        
+        // --- CONFIGURACIÓN DE AUDIO Y VOLUMEN ---
+        const musica = document.getElementById('audioFondo');
+        musica.volume = 0.15; // Música muy suave al fondo (15%)
+        
+        const sonidoRico = new Audio('rico.mp3');
+        const sonidoAsco = new Audio('asco.mp3');
+        sonidoRico.volume = 1.0; // Efectos al máximo (100%)
+        sonidoAsco.volume = 1.0;
+
+        function controlarMusica() {
+            const btn = document.getElementById('btn-musica');
+            if (musica.paused) {
+                musica.play();
+                btn.innerText = "🎵 Música: ON";
+                btn.style.backgroundColor = "#d5f5e3"; // Color verde si está activa
+            } else {
+                musica.pause();
+                btn.innerText = "🎵 Música: OFF";
+                btn.style.backgroundColor = "white";
+            }
+        }
+
+        let opciones = [];
+        function mezclar() {
+            // Elegimos comida y veneno al azar
+            const c = Math.random() > 0.5 ? 'comida1.jpg' : 'comida2.jpg';
+            const v = Math.random() > 0.5 ? 'veneno1.jpg' : 'veneno2.jpg';
+            
+            // Los mezclamos para que no siempre salgan en el mismo lado
+            opciones = [
+                { src: c, tipo: 'bueno' },
+                { src: v, tipo: 'malo' }
+            ].sort(() => Math.random() - 0.5);
+
+            document.getElementById('img0').src = opciones[0].src;
+            document.getElementById('img1').src = opciones[1].src;
+            
+            document.getElementById('c0').style.visibility = 'visible';
+            document.getElementById('c1').style.visibility = 'visible';
+        }
+
+        let idSeleccionado = null;
+        function arrastrar(e, indice) { 
+            idSeleccionado = indice; 
+            e.dataTransfer.setData("text", "drag"); 
+        }
+
+        function soltar(e) {
+            e.preventDefault();
+            const eleccion = opciones[idSeleccionado];
+            
+            // Ocultamos los círculos mientras Adrián come
+            document.getElementById('c0').style.visibility = 'hidden';
+            document.getElementById('c1').style.visibility = 'hidden';
+
+            if (eleccion.tipo === 'bueno') {
+                pts += 10;
+                pImg.src = 'comiendo.jpg';
+                msg.innerText = "¡QUÉ RICO! 😋";
+                sonidoRico.play().catch(() => {});
+            } else {
+                pts -= 20;
+                pImg.src = 'enfermo.jpg';
+                msg.innerText = "¡PUAJ! 🤢";
+                sonidoAsco.play().catch(() => {});
+            }
+
+            ptsTxt.innerText = pts;
+
+            // Esperamos 1.5 segundos y volvemos a la normalidad
+            setTimeout(() => {
+                pImg.src = 'normal.jpg';
+                msg.innerText = "Adrián tiene hambre";
+                mezclar();
+            }, 1500);
+        }
+
+        // Iniciar el juego por primera vez
+        mezclar();
+    </script>
+</body>
+</html>
