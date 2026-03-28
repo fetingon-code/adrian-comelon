@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego del Comelón - Adrián</title>
+    <style>
+        /* Evita zoom y movimientos raros en móviles */
+        * { touch-action: manipulation; user-select: none; -webkit-tap-highlight-color: transparent; }
+        
+        body { 
+            margin: 0; padding: 0; font-family: 'Arial Rounded MT Bold', Arial, sans-serif; height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('fondo.jpg');
+            background-size: cover; background-position: center; background-attachment: fixed;
+            overflow: hidden;
+        }
+
+        #btn-musica {
+            position: fixed; top: 15px; right: 15px; padding: 10px 20px;
+            background: white; border: 3px solid #2b5a9e; border-radius: 25px;
+            z-index: 1000; font-weight: bold; font-size: 14px; cursor: pointer;
+        }
+
+        #contenedor-juego { display: flex; flex-direction: column; align-items: center; z-index: 10; width: 100%; }
+        
+        #marcador { 
+            font-size: 28px; font-weight: bold; margin-bottom: 10px; 
+            background: white; padding: 10px 30px; border-radius: 30px; 
+            border: 4px solid #2b5a9e; color: #2b5a9e; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        #mensaje { 
+            background: rgba(255, 255, 255, 0.9); padding: 10px 20px; 
+            border-radius: 15px; margin-bottom: 20px; font-size: 22px; 
+            color: #333; text-align: center; min-width: 200px;
+        }
+
+        #caja-personaje { 
+            width: 240px; height: 280px; border: 8px solid #2b5a9e; 
+            background: white; border-radius: 30px; overflow: hidden; 
+            display: flex; align-items: center; justify-content: center;
+            position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        #personaje-img { width: 100%; height: 100%; object-fit: cover; }
+
+        #contenedor-objetos { 
+            display: flex; gap: 40px; margin-top: 50px; 
+            width: 100%; justify-content: center;
+        }
+
+        .circulo { 
+            width: 110px; height: 110px; border: 6px solid #2b5a9e; 
+            border-radius: 50%; background: white; display: flex; 
+            align-items: center; justify-content: center; 
+            cursor: pointer; transition: transform 0.2s, opacity 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Efecto visual al picar */
+        .circulo:active { transform: scale(0.9); }
+
+        .circulo img { width: 75%; height: 75%; object-fit: contain; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <button id="btn-musica" onclick="controlarMusica()">🎵 Música: OFF</button>
+    <audio id="audioFondo" src="musica.mp3" loop></audio>
+
+    <div id="contenedor-juego">
+        <div id="marcador">Puntos: <span id="puntos">0</span></div>
+        <h2 id="mensaje">Adrián tiene hambre</h2>
+        
+        <div id="caja-personaje">
+            <img src="normal.jpg" id="personaje-img">
+        </div>
+
+        <div id="contenedor-objetos">
+            <div class="circulo" id="c0" onclick="seleccionar(0)"><img src="" id="img0"></div>
+            <div class="circulo" id="c1" onclick="seleccionar(1)"><img src="" id="img1"></div>
+        </div>
+    </div>
+
+    <script>
+        let pts = 0;
+        const pImg = document.getElementById('personaje-img');
+        const ptsTxt = document.getElementById('puntos');
+        const msg = document.getElementById('mensaje');
+        
+        const musica = document.getElementById('audioFondo');
+        const sonidoRico = new Audio('rico.mp3');
+        const sonidoAsco = new Audio('asco.mp3');
+        musica.volume = 0.15;
+
+        function controlarMusica() {
+            if (musica.paused) { musica.play(); document.getElementById('btn-musica').innerText = "🎵 Música: ON"; }
+            else { musica.pause(); document.getElementById('btn-musica').innerText = "🎵 Música: OFF"; }
+        }
+
+        let opciones = [];
+        let bloqueado = false; // Para evitar que piquen muchas veces rápido
+
+        function mezclar() {
+            const c = Math.random() > 0.5 ? 'comida1.jpg' : 'comida2.jpg';
+            const v = Math.random() > 0.5 ? 'veneno1.jpg' : 'veneno2.jpg';
+            opciones = [{s:c, t:'bueno'}, {s:v, t:'malo'}].sort(() => Math.random() - 0.5);
+            
+            document.getElementById('img0').src = opciones[0].s;
+            document.getElementById('img1').src = opciones[1].s;
+            
+            document.getElementById('c0').style.visibility = 'visible';
+            document.getElementById('c0').style.opacity = '1';
+            document.getElementById('c1').style.visibility = 'visible';
+            document.getElementById('c1').style.opacity = '1';
+            bloqueado = false;
+        }
+
+        function seleccionar(indice) {
+            if (bloqueado) return;
+            bloqueado = true;
+
+            const sel = opciones[indice];
+            
+            // Efecto visual: desaparecen los círculos
+            document.getElementById('c0').style.opacity = '0';
+            document.getElementById('c1').style.opacity = '0';
+
+            if (sel.t === 'bueno') {
+                pts += 10;
+                pImg.src = 'comiendo.jpg';
+                msg.innerText = "¡QUÉ RICO! 😋";
+                sonidoRico.play().catch(()=>{});
+            } else {
+                pts -= 20;
+                pImg.src = 'enfermo.jpg';
+                msg.innerText = "¡PUAJ! 🤢";
+                sonidoAsco.play().catch(()=>{});
+            }
+
+            ptsTxt.innerText = pts;
+
+            setTimeout(() => {
+                pImg.src = 'normal.jpg';
+                msg.innerText = "Adrián tiene hambre";
+                mezclar();
+            }, 1500);
+        }
+
+        // Iniciar
+        mezclar();
+    </script>
+</body>
+</html>
